@@ -29,8 +29,7 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
 
     os.makedirs(os.path.join('results', dir_name), exist_ok=True)
 
-    # for exp_type in ['alone', 'favg', 'drs']:
-    for exp_type in ['drs']:
+    for exp_type in ['alone', 'favg', 'drs']:
 
         if exp_type == 'favg':
             nst = 1  # For fed_avg, we use a single training seed
