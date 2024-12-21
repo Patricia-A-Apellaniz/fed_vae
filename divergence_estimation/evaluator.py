@@ -25,15 +25,15 @@ class DivergenceEvaluator:
         self.ps = ps
         self.dataset_name = dataset_name
 
-    def evaluate(self, mc, ratio, disc, cfg=None):
+    def evaluate(self, mc, ratio, disc, results_folder='results', cfg=None):
         # Compute divergence using different methods.
         M = self.m / (self.m + (2 * self.l)) # M is the fraction of the training set used to train the discriminator.
         n_fit_epochs = cfg.epochs # Number of epochs used to train the discriminator.
 
         # Define KL, JS object
-        kl = KL(self.x_p, self.x_q, M, seed=self.id, pre_path=self.pre_path, results_path=self.result_path, n=self.n,
+        kl = KL(self.x_p, self.x_q, M, results_folder, seed=self.id, pre_path=self.pre_path, results_path=self.result_path, n=self.n,
                 device=self.x_q.device, m=self.m, l=self.l, dataset_name=self.dataset_name, cfg=cfg)
-        js = JS(self.x_p, self.x_q, M, seed=self.id, pre_path=self.pre_path, results_path=self.result_path, n=self.n,
+        js = JS(self.x_p, self.x_q, M, results_folder, seed=self.id, pre_path=self.pre_path, results_path=self.result_path, n=self.n,
                 device=self.x_q.device, m=self.m, l=self.l, dataset_name=self.dataset_name, cfg=cfg)
         kl1, kl2, kl4, js1, js2, js4 = None, None, None, None, None, None
         # Monte Carlo

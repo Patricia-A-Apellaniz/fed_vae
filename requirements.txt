@@ -5,3 +5,4 @@ joblib
 tabulate
 scikit-learn
 tqdm
+seaborn

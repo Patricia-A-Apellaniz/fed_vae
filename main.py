@@ -18,7 +18,7 @@ from scipy.stats import ttest_ind_from_stats
 
 
 def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_rounds, n_epochs_per_round,
-               n_samples_public, m, l, dataset_name, max_samples_train, n_jobs=10):
+               n_samples_public, m, l, dataset_name, max_samples_train, n_jobs=10, results_path='results'):
     n_nodes = len(data_per_node)
     df_train_list, df_val_list, feat_distributions, clas, label = load_data(dataset_name, data_per_node, iid,
                                                                             n_samples_val)
@@ -27,7 +27,7 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
     else:
         dir_name = dataset_name + '_niid'
 
-    os.makedirs(os.path.join('results', dir_name), exist_ok=True)
+    os.makedirs(os.path.join(results_path, dir_name), exist_ok=True)
 
     for exp_type in ['alone', 'favg', 'drs']:
 
@@ -49,7 +49,7 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
                               dataset_name=dataset_name, node_name=str(i)))
             # Save the validation df for each node (we validate outside the train loop for speed). Note that the validation data is the same for all exp_types, so do not be afraid to overwrite it
             df_val_list[i][0: m + 2 * l].to_csv(
-                os.path.join('results', dir_name, 'val_data_' + nodes[i].node_name + '.csv'), index=False)
+                os.path.join(results_path, dir_name, 'val_data_' + nodes[i].node_name + '.csv'), index=False)
         tr_info_per_node = [[] for _ in range(n_nodes)]
 
         print(f"Starting training of experiment {dir_name} with {n_nodes} nodes and {nr} rounds, exp_type={exp_type}")
@@ -65,7 +65,7 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
                 _ = node.generate_public_data(
                     n_samples=n_samples_public)  # This data is used for validation and for federation in case of DRS
                 # Save the public df for later validation (i.e., the data generated)
-                node.public_df[0: m + 2 * l].to_csv(os.path.join('results', dir_name,
+                node.public_df[0: m + 2 * l].to_csv(os.path.join(results_path, dir_name,
                                                                  'public_data_' + exp_type + '_r_' + str(
                                                                      round) + '_n_' + node.node_name + '.csv'),
                                                     index=False)
@@ -93,8 +93,8 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
         for i, node in enumerate(nodes):
             for j, model in enumerate(node.models):
                 model.save(
-                    os.path.join('results', dir_name, 'model_' + exp_type + '_n_' + str(i) + '_m_' + str(j)) + '.pt')
-        with open(os.path.join('results', dir_name, 'training_' + exp_type + '.pkl'), 'wb') as f:
+                    os.path.join(results_path, dir_name, 'model_' + exp_type + '_n_' + str(i) + '_m_' + str(j)) + '.pt')
+        with open(os.path.join(results_path, dir_name, 'training_' + exp_type + '.pkl'), 'wb') as f:
             pickle.dump({'tr_info_per_node': tr_info_per_node}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         node_names = [str(i) for i in range(n_nodes)]
@@ -104,17 +104,17 @@ def experiment(data_per_node, iid, n_samples_val, n_seeds_train, n_seeds_val, n_
             range(nr))
 
 
-def plot_experiment(dir_name, n_nodes, n_rounds, n_seeds_val):
+def plot_experiment(dir_name, n_nodes, n_rounds, n_seeds_val, results_path='results'):
     def get_data(exp_type):
-        with open(os.path.join('results', dir_name, 'training_' + exp_type + '.pkl'), 'rb') as f:
+        with open(os.path.join(results_path, dir_name, 'training_' + exp_type + '.pkl'), 'rb') as f:
             data = pickle.load(f)
         if exp_type == 'alone':
-            dfs = [[pd.read_csv(os.path.join('results', dir_name,
+            dfs = [[pd.read_csv(os.path.join(results_path, dir_name,
                                              'evaluation_' + exp_type + '_r_' + str(0) + '_n_' + str(i) + '_s_' + str(
                                                  seed) + '.csv')) for seed in range(n_seeds_val)] for i in
                    range(n_nodes)]
         else:
-            dfs = [[[pd.read_csv(os.path.join('results', dir_name,
+            dfs = [[[pd.read_csv(os.path.join(results_path, dir_name,
                                               'evaluation_' + exp_type + '_r_' + str(r) + '_n_' + str(i) + '_s_' + str(
                                                   seed) + '.csv')) for seed in range(n_seeds_val)] for r in
                     range(n_rounds)] for i in range(n_nodes)]
@@ -287,6 +287,7 @@ if __name__ == '__main__':
     n_epochs_per_round = 200
     max_samples_train = max(
         data_per_node)  # Maximum number of samples to use for training: set so that best node does not use data from other nodes!
+    results_path = 'results_PAPER'
 
     train_flag = not True
     for dataset_name in dataset_names:
@@ -295,16 +296,16 @@ if __name__ == '__main__':
             experiment(data_per_node=data_per_node, iid=True, n_samples_val=n_samples_val, n_seeds_train=n_seeds_train,
                        n_seeds_val=n_seeds_val, n_rounds=n_rounds, n_epochs_per_round=n_epochs_per_round,
                        n_samples_public=n_samples_val, m=m, l=l, dataset_name=dataset_name,
-                       max_samples_train=max_samples_train)
+                       max_samples_train=max_samples_train, results_path=results_path)
 
             # Using non-iid data
             experiment(data_per_node=data_per_node, iid=False, n_samples_val=n_samples_val, n_seeds_train=n_seeds_train,
                        n_seeds_val=n_seeds_val, n_rounds=n_rounds, n_epochs_per_round=n_epochs_per_round,
                        n_samples_public=n_samples_val, m=m, l=l, dataset_name=dataset_name,
-                       max_samples_train=max_samples_train)
+                       max_samples_train=max_samples_train, results_path=results_path)
 
         # Do the plots
-        plot_experiment(dataset_name + '_iid', n_nodes, n_rounds, n_seeds_val)
-        plot_experiment(dataset_name + '_niid', n_nodes, n_rounds, n_seeds_val)
+        plot_experiment(dataset_name + '_iid', n_nodes, n_rounds, n_seeds_val, results_path=results_path)
+        plot_experiment(dataset_name + '_niid', n_nodes, n_rounds, n_seeds_val, results_path=results_path)
 
     print('done')

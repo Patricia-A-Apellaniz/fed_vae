@@ -84,10 +84,10 @@ class Node(object):
         self.shared_df = shared_df.sample(frac=1).reset_index(drop=True)  # Shuffle the data received from other nodes
 
 
-def evaluate_node(dataset_name, dir_name, exp_type, node_name, round, m, l, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), clas=False, label=None, seed=0):  # Evaluate the quality of the generated data using the JS divergence
+def evaluate_node(dataset_name, dir_name, exp_type, node_name, round, m, l, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), clas=False, label=None, seed=0, results_path='results'):  # Evaluate the quality of the generated data using the JS divergence
 
-    syn_df = pd.read_csv(os.path.join('results', dir_name, 'public_data_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '.csv'))
-    val_df = pd.read_csv(os.path.join('results', dir_name, 'val_data_' + node_name + '.csv'))
+    syn_df = pd.read_csv(os.path.join(results_path, dir_name, 'public_data_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '.csv'))
+    val_df = pd.read_csv(os.path.join(results_path, dir_name, 'val_data_' + node_name + '.csv'))
 
     n = val_df.shape[0]
     val_size = m + 2 * l
@@ -141,9 +141,9 @@ def evaluate_node(dataset_name, dir_name, exp_type, node_name, round, m, l, devi
 
         pd.DataFrame({'kl': [kl], 'js': [js], 'acc_real_real': [acc_real_real], 'acc_real_gen': [acc_real_gen],
                       'acc_gen_real': [acc_gen_real], 'acc_gen_gen': [acc_gen_gen], 'n_val': [len(x_test_real)]}).to_csv(
-            os.path.join('results', dir_name, 'evaluation_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '_s_' + str(seed) + '.csv'))
+            os.path.join(results_path, dir_name, 'evaluation_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '_s_' + str(seed) + '.csv'))
     else:
         pd.DataFrame({'kl': [kl], 'js': [js]}).to_csv(
-            os.path.join('results', dir_name, 'evaluation_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '_s_' + str(seed) +  '.csv'))
+            os.path.join(results_path, dir_name, 'evaluation_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '_s_' + str(seed) +  '.csv'))
 
 

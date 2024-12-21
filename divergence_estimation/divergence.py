@@ -13,14 +13,14 @@ from divergence_estimation.discriminator import Discriminator
 from divergence_estimation.tabular import tensor_to_dataloader
 
 
-def get_best_seed(cfg, results_path):
+def get_best_seed(cfg, results_path, results_folder='results'):
     # The generator model uses several seeds and hyperparameters so it is necessary to select the best one to
     # transfer knowledge.
     experiment_name = cfg.experiment_name
     dataset_name = results_path.split(experiment_name)[-1]
     dataset_name = dataset_name.split('_pretrained')[0]
     dataset_name = dataset_name.split(cfg.phase2.gen_model)[0]
-    results_path = os.path.join(Path(sys.argv[0]).resolve().parent.parent, 'results',
+    results_path = os.path.join(Path(sys.argv[0]).resolve().parent.parent, results_folder,
                                 experiment_name + dataset_name + cfg.phase1.gen_model + '_phase2_' + cfg.phase2.gen_model)
 
     df_js = pd.read_csv(os.path.join(results_path, 'js.csv'))
@@ -34,10 +34,10 @@ def get_best_seed(cfg, results_path):
     return best_seed_ph2, disc_init_path
 
 
-def get_pretrained(cfg, results_path):
+def get_pretrained(cfg, results_path, results_folder):
     # Get the path of the pretrained model
     if 'data' in cfg.case:
-        best_seed_ph2, disc_init_path = get_best_seed(cfg, results_path)
+        best_seed_ph2, disc_init_path = get_best_seed(cfg, results_path, results_folder)
         # Group by n, m, l and get the best seed
         # List of files in the folder
         files = os.listdir(disc_init_path)
@@ -72,7 +72,7 @@ def get_pretrained(cfg, results_path):
 
 class Divergence(ABC):
 
-    def __init__(self, p_samples, q_samples, fraction_train, device='cpu', seed=0, pre_path=None,
+    def __init__(self, p_samples, q_samples, fraction_train, results_folder, device='cpu', seed=0, pre_path=None,
                  results_path=None, n=0, m=0, l=0, layers=(256, 64, 32), dataset_name=None, cfg=None) -> None:
 
         self._model = Discriminator(layers)
@@ -89,7 +89,7 @@ class Divergence(ABC):
         elif cfg is not None:
             if cfg.use_pretrained:
                 print('Using pretrained model for the discriminator')
-                pre_path = get_pretrained(cfg, results_path)
+                pre_path = get_pretrained(cfg, results_path, results_folder)
                 self._model.load_state_dict(torch.load(pre_path))
 
         if len(p_samples) != len(q_samples):

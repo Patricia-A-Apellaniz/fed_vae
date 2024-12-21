@@ -71,3 +71,23 @@ class Generator(VariationalAutoencoder):
                         'latent_params': [mu_sample, log_var_sample]}
 
             return out_data
+
+
+
+    def tvae_generator(self, n_gen=100, device=None):
+        mu_sample = np.zeros((n_gen, self.latent_dim))
+        log_var_sample = np.zeros((n_gen, self.latent_dim))
+        z = self.latent_space.sample_latent([torch.from_numpy(mu_sample).float(), torch.from_numpy(log_var_sample).float()]).to(device)
+        check_nan_inf(z, 'TVAE latent space')
+
+        # Sample from z
+        cov_params = self.Decoder(z)
+        check_nan_inf(cov_params, 'Decoder')
+        cov_params = cov_params.detach().cpu().numpy()
+        cov_samples = sample_from_dist(cov_params, self.feat_distributions)
+        out_data = {'z': z.detach().cpu().numpy(),
+                    'cov_params': cov_params,
+                    'cov_samples': cov_samples,
+                    'latent_params': [mu_sample, log_var_sample]}
+
+        return out_data
