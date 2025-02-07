@@ -75,23 +75,6 @@ class Divergence(ABC):
     def __init__(self, p_samples, q_samples, fraction_train, results_folder, device='cpu', seed=0, pre_path=None,
                  results_path=None, n=0, m=0, l=0, layers=(256, 64, 32), dataset_name=None, cfg=None) -> None:
 
-        self._model = Discriminator(layers)
-        self._model.to(device=device)
-        self.results_path = results_path
-        self.seed = seed
-        self.dataset_name = dataset_name
-        # Load pre-trained model
-        if pre_path is not None and os.path.exists(pre_path):
-            # Check if file exists
-            if os.path.isfile(pre_path):
-                print('Loading pretrained model for the discriminator from cfg')
-                self._model.load_state_dict(torch.load(pre_path))
-        elif cfg is not None:
-            if cfg.use_pretrained:
-                print('Using pretrained model for the discriminator')
-                pre_path = get_pretrained(cfg, results_path, results_folder)
-                self._model.load_state_dict(torch.load(pre_path))
-
         if len(p_samples) != len(q_samples):
             raise ValueError('p_samples and q_samples must have the same length')
 
@@ -118,6 +101,26 @@ class Divergence(ABC):
             self.q_train, self.q_eval = q_samples, q_samples
             self.p_val = self.p_eval
             self.q_val = self.q_eval
+
+        # Use dummy_dl to initialize the model and set weight initialization
+        dummy_dl = self.to_dataloader(self.p_train.cpu(), self.q_train.cpu())
+        self._model = Discriminator(layers, dummy_data=dummy_dl)
+        self._model.to(device=device)
+        self.results_path = results_path
+        self.seed = seed
+        self.dataset_name = dataset_name
+        # Load pre-trained model
+        if pre_path is not None and os.path.exists(pre_path):
+            # Check if file exists
+            if os.path.isfile(pre_path):
+                print('Loading pretrained model for the discriminator from cfg')
+                self._model.load_state_dict(torch.load(pre_path))
+        elif cfg is not None:
+            if cfg.use_pretrained:
+                print('Using pretrained model for the discriminator')
+                pre_path = get_pretrained(cfg, results_path, results_folder)
+                self._model.load_state_dict(torch.load(pre_path))
+
 
     def to_dataloader(self, p_samples, q_samples=None, shuffle=True):
         # Convert tensors to dataloader
@@ -286,8 +289,8 @@ class JS(Divergence):
             prob_p = self._model.predict(p_dl, sigmoid=True)
             prob_q = 1 - self._model.predict(q_dl, sigmoid=True)
 
-        prob_p = torch.clamp(prob_p, min=1e-7, max=1)
-        prob_q = torch.clamp(prob_q, min=1e-7, max=1)
+        prob_p = torch.clamp(prob_p, min=1e-2, max=0.99)
+        prob_q = torch.clamp(prob_q, min=1e-2, max=0.99)
         estimate = 0.5 * (1 + torch.log2(prob_p).mean() + 1 + torch.log2(prob_q).mean())
 
         estimate_ln = 0.5 * ((torch.log(prob_p)).mean()) + 0.5 * ((torch.log((prob_q))).mean()) + torch.log(

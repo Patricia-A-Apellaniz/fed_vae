@@ -19,10 +19,10 @@ from data_utils import load_data
 if __name__ == '__main__':
     dataset_names = ['3', '7']
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    concern_1 = False
+    concern_1 = True
     concern_3 = True
-    concern_5 = False
-    results_path = 'results_PAPER'
+    concern_5 = True
+    results_path = 'results'
 
     # STEPS (CONCERNS 1 AND 6)
     if concern_1:
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         calculate_distances = False
 
         for dataset_name in dataset_names:
-            for iid in [True, False]:
+            for i, iid in enumerate([True, False]):
                 if iid:
                     dir_name = dataset_name + '_iid'
                 else:
@@ -72,11 +72,11 @@ if __name__ == '__main__':
                     distances['gen'] = gen_dists
 
                     # 4. Save dictionary with distances
-                    with open(os.path.join(results_path, dir_name) + os.sep + 'distances.pickle', 'wb') as handle:
+                    with open(os.path.join(results_path, dir_name) + os.sep + exp_type + '_distances.pickle', 'wb') as handle:
                         pickle.dump(distances, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 else:
                     # Load dictionary with distances
-                    with open(os.path.join(results_path, dir_name) + os.sep + 'distances.pickle', 'rb') as handle:
+                    with open(os.path.join(results_path, dir_name) + os.sep + exp_type + '_distances.pickle', 'rb') as handle:
                         distances = pickle.load(handle)
 
                 # 4. Obtain minimum distances (one to one)
@@ -84,23 +84,27 @@ if __name__ == '__main__':
                 min_gen_dists = np.min(distances['gen'], axis=0)
 
                 # 4. Generate histograms with minimum distances for each one
-                fig, ax = plt.subplots(figsize = (5,5))
+                fig, ax = plt.subplots(figsize = (16, 12))
+                plt.tight_layout()
                 min_real_dists_df = pd.DataFrame(min_real_dists)
                 min_real_dists_df.plot(ax=ax, kind='hist', density=True, alpha=0.8, color='skyblue',bins=30)
                 min_real_dists_df.plot(ax=ax, kind='kde', color='blue', bw_method=0.3)
                 min_gen_dists_df = pd.DataFrame(min_gen_dists)
                 min_gen_dists_df.plot(ax=ax, kind='hist', density=True, alpha=0.3, color='red', bins=30)
                 min_gen_dists_df.plot(ax=ax, kind='kde', color='purple', bw_method=0.3)
-                ax.legend(labels=['Real', 'Real KDE', 'Synthetic', 'Synthetic KDE'], loc='upper right')
+                ax.legend(labels=['Real', 'Real KDE', 'Synthetic', 'Synthetic KDE'], loc='upper right', fontsize=36)
                 ax.set_ylim(0, 1)
                 ax.set_xlim(0, 5)
-                ax.set_xlabel('Distances')
+                ax.set_xlabel('Distances', fontsize=36)
+                ax.set_ylabel('Density', fontsize=36)
                 plt.grid(True)
                 real_dataset_name = 'Diabetes_H' if dataset_name == '3' else 'Heart'
                 title_iid = '_IID' if iid else '_Non-IID'
-                ax.set_title('Distance between real and synthetic data (' + real_dataset_name + title_iid +')', fontsize=9)
+                ax.set_title('Distances (' + real_dataset_name + title_iid +')', fontsize=40)
+                plt.yticks(fontsize=28)
+                plt.xticks(fontsize=28)
                 plt.tight_layout()
-                plt.savefig(os.path.join(results_path, dir_name) + os.sep + 'distances_'+ real_dataset_name + title_iid +'.pdf')
+                plt.savefig(os.path.join(results_path, dir_name) + os.sep + exp_type + '_distances_'+ real_dataset_name + title_iid +'.pdf')
                 plt.show()
                 plt.close()
 
@@ -111,13 +115,13 @@ if __name__ == '__main__':
 
     # STEPS (CONCERN 3)
     if concern_3:
-        # Data distributions entre nodos (TSNE)
+        # Data distributions entre nodos)
         data_per_node = (100, 1000, 1000)
         m = 7500
         l = 1000
         round = 4
         node_name = '0'
-        dataset_names = ['3']
+        dataset_names = ['3', '7']
         n_nodes = len(data_per_node)
         n_samples_val = m + 2 * l
 
@@ -135,8 +139,7 @@ if __name__ == '__main__':
                     dir_name = dataset_name + '_niid'
 
                 # Load real data
-                real_df = pd.read_csv(
-                    os.path.join(results_path, dir_name, 'val_data_' + str(node_name) + '.csv'))
+                real_df = pd.read_csv(os.path.join(results_path, dir_name, 'val_data_' + str(node_name) + '.csv'))
                 y_real = real_df.iloc[:, -1].values
                 x_real = real_df.iloc[:, :-1].values
 
@@ -177,7 +180,7 @@ if __name__ == '__main__':
                     col = real_df.columns[idx]
 
                     # Check if column is categorical and plot histogram instead of KDE
-                    fig, ax = plt.subplots(figsize=(5, 5))
+                    fig, ax = plt.subplots(figsize=(10, 8))
 
                     if original_data.loc[:, col].unique().all() == original_data.loc[:, col].unique().astype(int).all() and len(original_data.loc[:, col].unique()) < 10:
 
@@ -195,7 +198,7 @@ if __name__ == '__main__':
                             favg_syn_df_col[idx] = real_cats[np.argmin(np.abs(real_cats - favg_val))]
                             drs_syn_df_col[idx] = real_cats[np.argmin(np.abs(real_cats - drs_val))]
 
-                        ax.hist([real_df_col, favg_syn_df_col, drs_syn_df_col], alpha=1, bins=20,  histtype='bar', stacked=False, color=['skyblue', 'orange', 'purple'], label=['Real', 'FedAvg', 'SDS'])
+                        ax.hist([real_df_col, favg_syn_df_col, drs_syn_df_col], alpha=1, bins=20,  histtype='bar', stacked=False, color=['skyblue', 'orange', 'purple'], label=['Real', 'FedAvg', 'DRS'])
                     else:
                         sns.kdeplot(real_df.loc[:, col], fill=True, linewidths=1, color='skyblue', ax=ax)
                         sns.kdeplot(favg_syn_df.loc[:, col],  color='orange', ax=ax)
@@ -203,18 +206,25 @@ if __name__ == '__main__':
 
                     title_iid = '_IID' if iid else '_Non-IID'
                     d_name = 'Diabetes_H' + title_iid if dataset_name == '3' else 'Heart' + title_iid
-                    plt.title(col + ' for ' + d_name)
-                    ax.legend(['Real', 'FedAvg', 'SDS'], loc='best')
-                    ax.set_xlabel(col.upper() + ' distribution')
+                    plt.title(col + ' for ' + d_name, fontsize=40)
+                    if col == 'Age':
+                        ax.legend(['Real', 'FedAvg', 'DRS'], loc='lower left', fontsize=32)
+                    else:
+                        ax.legend(['Real', 'FedAvg', 'DRS'], loc='best', fontsize=32)
+                    ax.set_xlabel(col.upper() + ' distribution', fontsize=32)
+                    ax.set_ylabel('Frequency', fontsize=32)
+                    plt.xticks(fontsize=24)
+                    plt.yticks(fontsize=24)
                     plt.grid(True)
+                    plt.tight_layout()
                     plt.savefig(os.path.join(results_path, dir_name) + os.sep + 'hist_' + col + '_' + d_name + '.pdf')
                     plt.show()
                     plt.close()
 
     # STEPS (CONCERN 5)
     if concern_5:
-        # Data distributions entre nodos (TSNE de las clases)
-        data_per_node = (500, 500, 500)
+        # Data distributions entre nodos )
+        data_per_node = (100, 1000, 10000)
         m = 7500
         l = 1000
         n_nodes = len(data_per_node)

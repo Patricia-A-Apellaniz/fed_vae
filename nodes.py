@@ -31,8 +31,9 @@ class Node(object):
         self.best_model = None
         self.dataset_name = dataset_name
         self.node_name = node_name
+        self.model_public_df = None
 
-    def train_on_local_data(self, n_epochs=10000, batch_size=64, lr=1e-3, use_shared_data=False, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), max_samples_train=None, max_bgm_points=None):
+    def train_on_local_data(self, n_epochs=10000, batch_size=64, lr=1e-3, use_shared_data=False, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), max_samples_train=None):
         train_params = {'n_epochs': n_epochs, 'batch_size': batch_size, 'device': device, 'lr': lr}
         # Training data: private data + shared data
         if use_shared_data:
@@ -43,49 +44,54 @@ class Node(object):
             train_data = train_data[:max_samples_train]  # Always use the private samples
 
         mask = pd.DataFrame(np.ones(train_data.shape), columns=train_data.columns)
-        data = split_data(train_data, mask)
-        training_results = []
-
-        if max_bgm_points is not None and data[0].shape[0] > max_bgm_points:
-            bgm_data = data[0][0: max_bgm_points]
-        else:
-            bgm_data = data[0]
+        self.data = split_data(train_data, mask)
 
         best_loss = float('inf')
-
+        training_results = []
         for i, model in enumerate(self.models):
+            mask = pd.DataFrame(np.ones(train_data.shape), columns=train_data.columns)
+            self.data = split_data(train_data, mask)
+
             print(f"Training model {i}/{len(self.models)} on node {self.node_name} with {train_data.shape[0]} data points")
-            training_results.append(model.fit(data, train_params))
+            training_results.append(model.fit(self.data, train_params))
             if training_results[-1]['loss_va'][-1] < best_loss:
                 best_loss = training_results[-1]['loss_va'][-1]
                 self.best_model = i
-            print(f"Training model {i}/{len(self.models)} on node {self.node_name} finished: training BGM model...")
-            t0 = time.time()
-            model.bgm = None  # Reset the BGM model
-            model.train_latent_generator(bgm_data, device)  # Train the latent generator, let it ready for data generation afterwards
-            print(f"Training model {i}/{len(self.models)} on node {self.node_name} finished: BGM model trained in {time.time() - t0} seconds")
+            print(f"Training model {i}/{len(self.models)} on node {self.node_name} finished")
 
         return training_results
 
-    def generate_public_data(self, n_samples=1000, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')):
+    def generate_public_data(self, n_samples=1000, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), max_bgm_points=None):
         # Generate shared data
         print(f"Node {self.node_name}: Generating {n_samples} samples")
         public_data = []
-        for model in self.models: # By default, generate using all the models
+
+        if max_bgm_points is not None and self.data[0].shape[0] > max_bgm_points:
+            bgm_data = self.data[0][0: max_bgm_points]
+        else:
+            bgm_data = self.data[0]
+
+        for i, model in enumerate(self.models): # By default, generate using all the models
+            print(f"Training BGM model...")
+            t0 = time.time()
+            model.bgm = None  # Reset the BGM model
+            model.train_latent_generator(bgm_data, device)  # Train the latent generator, let it ready for data generation afterwards
+            print( f"Training model {i}/{len(self.models)} on node {self.node_name} finished: BGM model trained in {time.time() - t0} seconds")
+            # Generate data
             gen_data = model.generate(n_gen=n_samples, device=device)
             gen_df = pd.DataFrame(gen_data['cov_samples'], columns=self.private_df.columns.tolist())
             public_data.append(gen_df)
+        self.model_public_df = public_data
         self.public_df = pd.concat(public_data, axis=0)
         self.public_df = self.public_df.sample(frac=1).reset_index(drop=True)  # Shuffle the data
         return self.public_df
 
-    def add_shared_data(self, shared_df):
+    def add_shared_data(self, shared_df, n=2000):
         print(f"Node {self.node_name}: Received {shared_df.shape[0]} samples from other nodes")
         self.shared_df = shared_df.sample(frac=1).reset_index(drop=True)  # Shuffle the data received from other nodes
-
+        print(f"Node {self.node_name}: Received {shared_df.shape[0]} samples from other nodes")
 
 def evaluate_node(dataset_name, dir_name, exp_type, node_name, round, m, l, device=torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'), clas=False, label=None, seed=0, results_path='results'):  # Evaluate the quality of the generated data using the JS divergence
-
     syn_df = pd.read_csv(os.path.join(results_path, dir_name, 'public_data_' + exp_type + '_r_' + str(round) + '_n_' + node_name + '.csv'))
     val_df = pd.read_csv(os.path.join(results_path, dir_name, 'val_data_' + node_name + '.csv'))
 

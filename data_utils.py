@@ -47,11 +47,15 @@ def load_data(dataset_name, data_per_node=(100, 1000, 10000), iid=True, n_sample
         # Use BMI in the non-IID scenario of datasets 3 and 7
         assert dataset_name in ['3', '7'], "BMI is only available for datasets 3 and 7"
         assert n_nodes <= 3, "Non-IID scenario is only supported for up to 3 nodes"
+
+        # Obtain data['BMI'] median
+        median = data['BMI'].median()
+
         # Make a list of dataframes for each value of the BMI: above median and below median
-        df_list = [data[data['BMI'] < data['BMI'].median()], data[data['BMI'] >= data['BMI'].median()]]
-        prop_1 = np.array([0.5, 0.5])  # Evenly distributed (first node)
+        df_list = [data[data['BMI'] < median], data[data['BMI'] >= median]]
+        prop_1 = np.array([0.9, 0.1])  # Evenly distributed (first node)
         prop_2 = np.array([0.1, 0.9])  # Many in the second group (second node)
-        prop_3 = np.array([0.9, 0.1])  # Many in the first group (third node)
+        prop_3 = np.array([0.5, 0.5])  # Many in the first group (third node)
 
         # Now, assign the patients to the nodes
         i1, i2, i3 = 0, 0, 0
@@ -63,12 +67,14 @@ def load_data(dataset_name, data_per_node=(100, 1000, 10000), iid=True, n_sample
             else:
                 df_train[-1] = df_train[-1].sample(frac=1, random_state=42).reset_index(drop=True)
             i1, i2 = i1 + n1, i2 + n2
+
             n1_val, n2_val = int(pr[0] * n_samples_val), int(pr[1] * n_samples_val)
             df_val.append(pd.concat([df_list[0].iloc[i1:i1 + n1_val], df_list[1].iloc[i2:i2 + n2_val]], axis=0))
             if df_val[-1].shape[0] > n_samples_val:
                 df_val[-1] = df_val[-1].sample(n=n_samples_val, random_state=42).reset_index(drop=True)
             else:
                 df_val[-1] = df_val[-1].sample(frac=1, random_state=42).reset_index(drop=True)
+
         for j, dft in enumerate(df_train):
             print(
                 f"Node {j}: {dft.shape[0]} patients, prop of BMI < median: {np.sum(dft['BMI'] < data['BMI'].median()) / dft.shape[0]}, "

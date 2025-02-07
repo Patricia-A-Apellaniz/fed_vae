@@ -10,15 +10,50 @@ from divergence_estimation.dense import DenseModule
 
 
 class Discriminator(nn.Module):
-    def __init__(self, layers,*args, **kwargs):
+    def __init__(self, layers, dummy_data=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         layers_ = []
-        for elem in layers:
-            layers_.append(DenseModule(elem, activation="leaky_relu", batch_norm=True, dropout=True))
-            # layers_.append(DenseModule(elem, activation="relu", batch_norm=False, dropout=False))
-        layers_ += [nn.LazyLinear(1)]
+        for i, elem in enumerate(layers):
+            ly = DenseModule(elem, activation="leaky_relu", batch_norm=False, dropout=True)
+            layers_.append(ly)
+        #layers_ += [nn.LazyLinear(1)]
+
+        # Output layer
+        self.output_layer = nn.LazyLinear(1)
+        layers_.append(self.output_layer)
+
         self.l = nn.ModuleList(layers_)
         self.loss_plot = None
+
+        if dummy_data is not None:
+            # **Forward pass dummy input to initialize LazyLinear layers**
+            self._initialize_layers(dummy_data)
+
+            # Initialize weights properly
+            self._initialize_weights()
+
+    def _initialize_layers(self, dummy_dl):
+        """Perform a dummy forward pass to initialize LazyLinear layers."""
+        with torch.no_grad():
+            for X, _ in dummy_dl:
+                dummy_input = X
+                break
+            _ = self.forward(dummy_input)
+
+
+    def _initialize_weights(self):
+        """Initialize weights for all layers."""
+        for layer in self.l:
+            if isinstance(layer, DenseModule):
+                nn.init.kaiming_normal_(layer.layer.weight, nonlinearity='leaky_relu')
+                if layer.layer.bias is not None:
+                    nn.init.constant_(layer.layer.bias, 0.3)
+
+        # Initialize output layer weights
+        nn.init.kaiming_normal_(self.output_layer.weight, nonlinearity='linear')  # For raw score output
+
+        if self.output_layer.bias is not None:
+            nn.init.constant_(self.output_layer.bias, 0.3)
 
     def forward(self, data: torch.Tensor, *, sigmoid=False) -> torch.Tensor:
         x = data
@@ -57,7 +92,7 @@ class Discriminator(nn.Module):
             if len(dataloader) == 1:  # Only a single batch of data
                 optimizer.zero_grad()
                 logit_X = self(X)
-                loss = F.binary_cross_entropy_with_logits(logit_X, y.reshape(-1))
+                loss = F.binary_cross_entropy_with_logits(logit_X, y.reshape(-1)) + 1e-3
                 loss.backward()
                 optimizer.step()
                 cum_loss += loss.item()
