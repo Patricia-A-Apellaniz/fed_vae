@@ -8,10 +8,13 @@ This repository provides:
 * Pre-processed and ready-to-use datasets included.
 * Validation metrics (JS and classifying accuracy).
 * A script to generate result tables as presented in the paper.
-* Pre-trained models to save you training time.
+* **Updated pre-trained models and results**, which align with those published in the paper.
+  
+For more details, see the full paper **[here](https://doi.org/10.3390/bdcc9020018)**:
 
-For more details, see full paper [here]().
-
+**Reference:**
+> Apellániz, P. A., Parras, J., & Zazo, S. (2025). *Improving Synthetic Data Generation Through Federated Learning in Scarce and Heterogeneous Data Scenarios.* Big Data and Cognitive Computing, 9(2), 18.  
+> [https://doi.org/10.3390/bdcc9020018](https://doi.org/10.3390/bdcc9020018)
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -22,16 +25,16 @@ You should have the following installed on your machine:
 
 * Ubuntu
 * Python 3.8.0
-* Packages in requirements.txt
+* Packages in `requirements.txt`
   ```sh
   pip install -r requirements.txt
-  ```
+
 
 ### Installation
 
 Download the repo manually (as a .zip file) or clone it using Git.
    ```sh
-   git clone https://github.com/github_username/repo_name.git
+   git clone https://github.com/Patricia-A-Apellaniz/fed_vae.git
    ```
 
 
@@ -63,9 +66,25 @@ To train/test the models and show results, run the following command:
 [//]: # (<p align="right">&#40;<a href="#readme-top">back to top</a>&#41;</p>)
 
 
+<!-- CITATION -->
+## Citation
 
 <!-- CONTACT -->
 ## Contact
+If you use this work, please cite the following publication:
+   ```sh
+@article{apellaniz2025improving,
+  title={Improving Synthetic Data Generation Through Federated Learning in Scarce and Heterogeneous Data Scenarios},
+  author={Apell{\'a}niz, Patricia A and Parras, Javier and Zazo, Santiago},
+  journal={Big Data and Cognitive Computing},
+  volume={9},
+  number={2},
+  pages={18},
+  year={2025},
+  publisher={Multidisciplinary Digital Publishing Institute},
+  doi = {10.3390/bdcc9020018}
+}
+   ```
 
 Patricia A. Apellaniz - patricia.alonsod@upm.es
 
